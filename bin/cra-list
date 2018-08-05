@@ -1,0 +1,14 @@
+#!/usr/bin/env node
+
+console.log()
+process.on('exit', () => {
+  console.log()
+})
+
+/**
+ * List repos.
+ */
+
+console.log('current templates list:')
+console.log('')
+console.log('1. cra : based on create-react-app')

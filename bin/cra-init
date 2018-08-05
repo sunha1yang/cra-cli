@@ -1,0 +1,93 @@
+#!/usr/bin/env node
+
+const program = require('commander')
+const exists = require('fs').existsSync // 用于检测路径是否存在。（会阻塞)
+const path = require('path')
+const chalk = require('chalk')
+const inquirer = require('inquirer') // 用于命令行与开发者交互
+const logger = require('../lib/logger')
+const generate = require('../lib/generate')
+const localPath = require('../lib/local-path') // 自定义工具-用于路径的处理
+
+const isLocalPath = localPath.isLocalPath
+const getTemplatePath = localPath.getTemplatePath
+
+/**
+ * Usage.
+ */
+
+program.usage('<template-name> [project-name]')
+
+/**
+ * Help.
+ */
+
+program.on('--help', () => {
+  console.log('  Examples:')
+  console.log()
+  console.log(chalk.gray('    # create a new project with an official template'))
+  console.log('    $ cra init webpack my-project')
+  console.log()
+})
+
+/**
+ * Help.
+ */
+
+function help() {
+  program.parse(process.argv)
+  if (program.args.length < 1) return program.help()
+}
+help()
+
+/**
+ * Settings.
+ */
+
+let template = program.args[0] // 模板名称
+const rawName = program.args[1] // 项目构建目录名
+const inPlace = !rawName || rawName === '.' // 没写或者“.”，表示当前目录下构建项目
+const name = inPlace ? path.relative('../', process.cwd()) : rawName //如果在当前目录下构建项目,当前目录名为项目构建目录名，否则是当前目录下的子目录【rawName】为项目构建目录名
+const to = path.resolve(rawName || '.') // 项目构建目录的绝对路径
+
+console.log()
+process.on('exit', () => {
+  console.log()
+})
+
+if (inPlace || exists(to)) {
+  inquirer
+    .prompt([
+      {
+        type: 'confirm',
+        message: inPlace ? '是否在当前目录下构建项目?' : '构建目录已存在, 是否继续?',
+        name: 'ok'
+      }
+    ])
+    .then(answers => {
+      if (answers.ok) {
+        run()
+      }
+    })
+    .catch(logger.fatal)
+} else {
+  run()
+}
+
+/**
+ * Check and generate the project.
+ */
+
+function run() {
+  console.log(template)
+  const templatePath = getTemplatePath(template)
+  if (exists(templatePath)) {
+    generate(name, templatePath, to, err => {
+      if (err) logger.fatal(err)
+      console.log()
+      logger.success('Generated "%s".', name)
+    })
+  } else {
+    logger.fatal('Local template "%s" not found.', template)
+  }
+}
